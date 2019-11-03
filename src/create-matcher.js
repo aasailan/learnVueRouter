@@ -13,26 +13,47 @@ export type Matcher = {
   addRoutes: (routes: Array<RouteConfig>) => void;
 };
 
+/**
+ * @description 创建一个route匹配器，用来根据route匹配对应的组件实例
+ * @export
+ * @param {Array<RouteConfig>} routes
+ * @param {VueRouter} router
+ * @returns {Matcher}
+ */
 export function createMatcher (
   routes: Array<RouteConfig>,
   router: VueRouter
 ): Matcher {
+  // 传入routeConfigs，转换为routeRecord对象，然后存储在PathList、PathMap、NameMap中
   const { pathList, pathMap, nameMap } = createRouteMap(routes)
 
+  // 根据传入的routes，重新初始化pathList, pathMap, nameMap三个对象，达到动态添加routeConfig的目的
   function addRoutes (routes) {
     createRouteMap(routes, pathList, pathMap, nameMap)
   }
 
+  /**
+   * @description 根据传入的raw创建对应的route对象（每次都是新建Route对象）
+   * NOTE: 一个路由对象 (route object) 表示当前激活的路由的状态信息，包含了当前 URL 解析得到的信息，
+   * 还有 URL 匹配到的路由记录 (route records)。路由对象是不可变 (immutable) 的，
+   * 每次成功的导航后都会产生一个新的对象。
+   * @param {RawLocation} raw 导航目标的url 或者 Location对象
+   * @param {Route} [currentRoute] 当前页面的route对象
+   * @param {Location} [redirectedFrom]
+   * @returns {Route}
+   */
   function match (
-    raw: RawLocation,
-    currentRoute?: Route,
+    raw: RawLocation, // string or Location
+    currentRoute?: Route, // 当前需要匹配的route对象
     redirectedFrom?: Location
   ): Route {
+    // 生成Location对象，描述导航目标页面的位置信息
     const location = normalizeLocation(raw, currentRoute, false, router)
     const { name } = location
 
     if (name) {
-      const record = nameMap[name]
+      // 根据name导航匹配
+      const record = nameMap[name] // 获取routeRecord
       if (process.env.NODE_ENV !== 'production') {
         warn(record, `Route with name '${name}' does not exist`)
       }
@@ -42,20 +63,24 @@ export function createMatcher (
         .map(key => key.name)
 
       if (typeof location.params !== 'object') {
+        // 如果用户没有初始化params属性，则初始化
         location.params = {}
       }
 
       if (currentRoute && typeof currentRoute.params === 'object') {
         for (const key in currentRoute.params) {
+          // 遍历当前页面route对象的params参数
           if (!(key in location.params) && paramNames.indexOf(key) > -1) {
+            // ??
             location.params[key] = currentRoute.params[key]
           }
         }
       }
-
+      // ?
       location.path = fillParams(record.path, location.params, `named route "${name}"`)
       return _createRoute(record, location, redirectedFrom)
     } else if (location.path) {
+      // 根据path导航match
       location.params = {}
       for (let i = 0; i < pathList.length; i++) {
         const path = pathList[i]
@@ -156,17 +181,20 @@ export function createMatcher (
     redirectedFrom?: Location
   ): Route {
     if (record && record.redirect) {
+      // 如果routeRecord有重定向的配置，那么开始重定向
       return redirect(record, redirectedFrom || location)
     }
     if (record && record.matchAs) {
       return alias(record, location, record.matchAs)
     }
+    // 根据routeRecord，Location对象创建route对象
     return createRoute(record, location, redirectedFrom, router)
   }
 
+  // 返回一个对象，包含match和addRoutes方法
   return {
-    match,
-    addRoutes
+    match, // 根据当前路由匹配到组件实例
+    addRoutes // 动态注册routeConfig对象
   }
 }
 

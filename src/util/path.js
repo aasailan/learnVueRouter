@@ -68,7 +68,7 @@ export function parsePath (path: string): {
     hash
   }
 }
-
+// 将url中出现的 // 替换为 /
 export function cleanPath (path: string): string {
   return path.replace(/\/\//g, '/')
 }

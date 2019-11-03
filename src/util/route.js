@@ -5,6 +5,13 @@ import { stringifyQuery } from './query'
 
 const trailingSlashRE = /\/?$/
 
+/**
+ * @description 根据传入的routeRecord和Location对象创建Route对象
+ * @param {*} record
+ * @param {*} location
+ * @param {*} redirectedFrom
+ * @param {*} router
+ */
 export function createRoute (
   record: ?RouteRecord,
   location: Location,
@@ -15,9 +22,12 @@ export function createRoute (
 
   let query: any = location.query || {}
   try {
+    // 深copy query对象
     query = clone(query)
   } catch (e) {}
 
+  // NOTE: 创建Route对象
+  // https://router.vuejs.org/zh/api/#%E8%B7%AF%E7%94%B1%E5%AF%B9%E8%B1%A1%E5%B1%9E%E6%80%A7
   const route: Route = {
     name: location.name || (record && record.name),
     meta: (record && record.meta) || {},
@@ -25,7 +35,7 @@ export function createRoute (
     hash: location.hash || '',
     query,
     params: location.params || {},
-    fullPath: getFullPath(location, stringifyQuery),
+    fullPath: getFullPath(location, stringifyQuery), // 完成解析后的 URL，包含查询参数和 hash 的完整路径。
     matched: record ? formatMatch(record) : []
   }
   if (redirectedFrom) {
@@ -34,6 +44,7 @@ export function createRoute (
   return Object.freeze(route)
 }
 
+// 简易deep clone
 function clone (value) {
   if (Array.isArray(value)) {
     return value.map(clone)

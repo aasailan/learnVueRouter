@@ -4,6 +4,19 @@ import Regexp from 'path-to-regexp'
 import { cleanPath } from './util/path'
 import { assert, warn } from './util/warn'
 
+/**
+ * @description 传入routeConfigs，转换为routeRecord对象，然后存储在PathList、PathMap、NameMap中
+ * @export
+ * @param {Array<RouteConfig>} routes
+ * @param {Array<string>} [oldPathList]
+ * @param {Dictionary<RouteRecord>} [oldPathMap]
+ * @param {Dictionary<RouteRecord>} [oldNameMap]
+ * @returns {{
+ *   pathList: Array<string>,
+ *   pathMap: Dictionary<RouteRecord>,
+ *   nameMap: Dictionary<RouteRecord>
+ * }}
+ */
 export function createRouteMap (
   routes: Array<RouteConfig>,
   oldPathList?: Array<string>,
@@ -14,18 +27,20 @@ export function createRouteMap (
   pathMap: Dictionary<RouteRecord>,
   nameMap: Dictionary<RouteRecord>
 } {
-  // the path list is used to control path matching priority
+  // the path list is used to control path matching priority path组成的数组
   const pathList: Array<string> = oldPathList || []
-  // $flow-disable-line
+  // $flow-disable-line 根据path索引RouteConfig
   const pathMap: Dictionary<RouteRecord> = oldPathMap || Object.create(null)
-  // $flow-disable-line
+  // $flow-disable-line 根据name索引RouteConfig
   const nameMap: Dictionary<RouteRecord> = oldNameMap || Object.create(null)
 
   routes.forEach(route => {
+    // NOTE: 将routeConfig对象转换为routeRecord，然后向pathList pathMap nameMap添加注册routeRecord
     addRouteRecord(pathList, pathMap, nameMap, route)
   })
 
   // ensure wildcard routes are always at the end
+  // 确保path为* 的routeConfig对象永远在pathList的最后一位
   for (let i = 0, l = pathList.length; i < l; i++) {
     if (pathList[i] === '*') {
       pathList.push(pathList.splice(i, 1)[0])
@@ -53,6 +68,15 @@ export function createRouteMap (
   }
 }
 
+/**
+ * @description 根据传入的routeConfig对象生成routeRecord，然后添加到pathList、pathMap、nameMap
+ * @param {Array<string>} pathList
+ * @param {*} pathMap
+ * @param {*} nameMap
+ * @param {RouteConfig} route
+ * @param {*} parent
+ * @param {*} matchAs
+ */
 function addRouteRecord (
   pathList: Array<string>,
   pathMap: Dictionary<RouteRecord>,
@@ -73,25 +97,28 @@ function addRouteRecord (
   }
 
   const pathToRegexpOptions: PathToRegexpOptions =
-    route.pathToRegexpOptions || {}
+    route.pathToRegexpOptions || {} // 出现在vuerouter2.6.0+，官方暂时没有文档
+  // 根据当前routeCOnfig，获取一个处理后的url
   const normalizedPath = normalizePath(path, parent, pathToRegexpOptions.strict)
 
   if (typeof route.caseSensitive === 'boolean') {
     pathToRegexpOptions.sensitive = route.caseSensitive
   }
 
+  // 根据RouteConfig创建RouteRecord对象，RouteCOnfig是暴露给用户的
+  // RouteRecord对象是经由RouteConfig处理后，在框架内使用的对象
   const record: RouteRecord = {
     path: normalizedPath,
     regex: compileRouteRegex(normalizedPath, pathToRegexpOptions),
-    components: route.components || { default: route.component },
+    components: route.components || { default: route.component }, // 命名视图组件
     instances: {},
-    name,
+    name, // routeConfig.name
     parent,
     matchAs,
-    redirect: route.redirect,
-    beforeEnter: route.beforeEnter,
+    redirect: route.redirect, // 重定向配置
+    beforeEnter: route.beforeEnter, // beforeEnter钩子
     meta: route.meta || {},
-    props:
+    props: // https://router.vuejs.org/zh/guide/essentials/passing-props.html#%E5%B8%83%E5%B0%94%E6%A8%A1%E5%BC%8F
       route.props == null
         ? {}
         : route.components
@@ -99,7 +126,7 @@ function addRouteRecord (
           : { default: route.props }
   }
 
-  if (route.children) {
+  if (route.children) { // 处理routeCOnfig.children
     // Warn if route is named, does not redirect and has a default child route.
     // If users navigate to this route by name, the default child will
     // not be rendered (GH Issue #629)
@@ -130,6 +157,7 @@ function addRouteRecord (
   }
 
   if (!pathMap[record.path]) {
+    // 向pathList和pathMap注册路由
     pathList.push(record.path)
     pathMap[record.path] = record
   }
@@ -163,6 +191,7 @@ function addRouteRecord (
   }
 
   if (name) {
+    // 向nameMap注册
     if (!nameMap[name]) {
       nameMap[name] = record
     } else if (process.env.NODE_ENV !== 'production' && !matchAs) {
@@ -193,11 +222,18 @@ function compileRouteRegex (
   return regex
 }
 
+/**
+ * @description 对path进行一些清理，如果有父路由则返回包含父路由的url
+ * @param {*} path
+ * @param {*} parent
+ * @param {*} strict
+ */
 function normalizePath (
   path: string,
-  parent?: RouteRecord,
+  parent?: RouteRecord, // 父路由
   strict?: boolean
 ): string {
+  // 严格模式，path不能以/结尾
   if (!strict) path = path.replace(/\/$/, '')
   if (path[0] === '/') return path
   if (parent == null) return path

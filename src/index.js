@@ -15,8 +15,10 @@ import { AbstractHistory } from './history/abstract'
 
 import type { Matcher } from './create-matcher'
 
+// const router = new VueRouter(config);
 export default class VueRouter {
-  static install: () => void;
+  // Vue.use(VueRouter); 静态方法，Vue插件方式调用
+  static install: () => void; // 后续会赋值成一个install函数
   static version: string;
 
   app: any;
@@ -25,35 +27,37 @@ export default class VueRouter {
   readyCbs: Array<Function>;
   options: RouterOptions;
   mode: string;
-  history: HashHistory | HTML5History | AbstractHistory;
+  history: HashHistory | HTML5History | AbstractHistory; // 当前路由导航对象
   matcher: Matcher;
   fallback: boolean;
-  beforeHooks: Array<?NavigationGuard>;
-  resolveHooks: Array<?NavigationGuard>;
-  afterHooks: Array<?AfterNavigationHook>;
+  beforeHooks: Array<?NavigationGuard>; // beforeEach
+  resolveHooks: Array<?NavigationGuard>; // beforeResolve
+  afterHooks: Array<?AfterNavigationHook>; // afterEach
 
   constructor (options: RouterOptions = {}) {
-    this.app = null
-    this.apps = []
-    this.options = options
-    this.beforeHooks = []
+    this.app = null // 当前激活使用的app
+    this.apps = [] // 被注册的app数组
+    this.options = options // 保存配置对象
+    this.beforeHooks = [] // 钩子数组
     this.resolveHooks = []
     this.afterHooks = []
+    // 匹配器
     this.matcher = createMatcher(options.routes || [], this)
 
-    let mode = options.mode || 'hash'
-    this.fallback = mode === 'history' && !supportsPushState && options.fallback !== false
+    let mode = options.mode || 'hash' // 默认hash模式
+    this.fallback = mode === 'history' && !supportsPushState && options.fallback !== false // history模式，但浏览器不支持pushState时，回退到hash模式
     if (this.fallback) {
       mode = 'hash'
     }
-    if (!inBrowser) {
+    if (!inBrowser) { // 当前不在浏览器中，可能是ssr
       mode = 'abstract'
     }
     this.mode = mode
 
     switch (mode) {
       case 'history':
-        this.history = new HTML5History(this, options.base)
+        // options.base https://router.vuejs.org/zh/api/#base
+        this.history = new HTML5History(this, options.base) // history对象，用来操作路由
         break
       case 'hash':
         this.history = new HashHistory(this, options.base, this.fallback)
@@ -71,15 +75,21 @@ export default class VueRouter {
   match (
     raw: RawLocation,
     current?: Route,
-    redirectedFrom?: Location
+    redirectedFrom?: Location // ?
   ): Route {
     return this.matcher.match(raw, current, redirectedFrom)
   }
 
+  // 获取当前route对象
   get currentRoute (): ?Route {
     return this.history && this.history.current
   }
 
+  /**
+   * @description 初始化 在VueRouter.install 中被调用，在Vue.use(VueRouter)是被调用
+   * @param {*} app new Vue({ router: vuerouter }); 实例
+   * @memberof VueRouter
+   */
   init (app: any /* Vue component instance */) {
     process.env.NODE_ENV !== 'production' && assert(
       install.installed,
@@ -89,6 +99,7 @@ export default class VueRouter {
 
     this.apps.push(app)
 
+    // 设置app destroy时的监听，确保app destroy时，能从router实例内部对app进行移除来释放内存
     // set up app destroyed handler
     // https://github.com/vuejs/vue-router/issues/2639
     app.$once('hook:destroyed', () => {
@@ -111,15 +122,17 @@ export default class VueRouter {
     const history = this.history
 
     if (history instanceof HTML5History) {
+      // 初始化后开始对当前url进行导航
       history.transitionTo(history.getCurrentLocation())
     } else if (history instanceof HashHistory) {
+      // 初始化后对当前url进行导航
       const setupHashListener = () => {
         history.setupListeners()
       }
       history.transitionTo(
         history.getCurrentLocation(),
-        setupHashListener,
-        setupHashListener
+        setupHashListener, // onComplete
+        setupHashListener // onAbort
       )
     }
 
@@ -130,7 +143,9 @@ export default class VueRouter {
     })
   }
 
+  // 以下是路由钩子方法接口
   beforeEach (fn: Function): Function {
+    // 向this.beforeHooks注册钩子函数
     return registerHook(this.beforeHooks, fn)
   }
 
@@ -150,10 +165,13 @@ export default class VueRouter {
     this.history.onError(errorCb)
   }
 
+  // router.push方法
   push (location: RawLocation, onComplete?: Function, onAbort?: Function) {
     // $flow-disable-line
     if (!onComplete && !onAbort && typeof Promise !== 'undefined') {
+      // 如果没有定义onComplete和onAbort且存在promise，则返回一个promise
       return new Promise((resolve, reject) => {
+        // 调用HTML5History实例
         this.history.push(location, resolve, reject)
       })
     } else {
@@ -161,6 +179,7 @@ export default class VueRouter {
     }
   }
 
+  // router.replace方法
   replace (location: RawLocation, onComplete?: Function, onAbort?: Function) {
     // $flow-disable-line
     if (!onComplete && !onAbort && typeof Promise !== 'undefined') {
@@ -171,19 +190,19 @@ export default class VueRouter {
       this.history.replace(location, onComplete, onAbort)
     }
   }
-
+  // router.go方法
   go (n: number) {
     this.history.go(n)
   }
-
+  // router.back
   back () {
     this.go(-1)
   }
-
+  // router.forward
   forward () {
     this.go(1)
   }
-
+  // 获取匹配的组件
   getMatchedComponents (to?: RawLocation | Route): Array<any> {
     const route: any = to
       ? to.matched
@@ -232,7 +251,7 @@ export default class VueRouter {
       resolved: route
     }
   }
-
+  // 动态注册route对象
   addRoutes (routes: Array<RouteConfig>) {
     this.matcher.addRoutes(routes)
     if (this.history.current !== START) {
@@ -241,6 +260,12 @@ export default class VueRouter {
   }
 }
 
+/**
+ * @description 向指定数组注册一个回调钩子函数
+ * @param {Array<any>} list
+ * @param {Function} fn
+ * @returns {Function} 返回一个cancel函数
+ */
 function registerHook (list: Array<any>, fn: Function): Function {
   list.push(fn)
   return () => {
