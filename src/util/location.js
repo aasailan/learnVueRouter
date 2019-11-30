@@ -33,10 +33,12 @@ export function normalizeLocation (
     // 已经标准化过直接返回
     return next
   } else if (next.name) {
+    // NOTE: 如果通过name来导航，那么query和params对象肯定是用户手动设置好的，无需再从url解析
     // 为啥有name属性，就不需要添加next._normalized标志
     next = extend({}, raw)
     const params = next.params
     if (params && typeof params === 'object') {
+      // route.params对象的源头
       next.params = extend({}, params)
     }
     return next
@@ -60,16 +62,18 @@ export function normalizeLocation (
     return next
   }
 
+  // NOTE: 以url字符串或者path属性进行导航
   const parsedPath = parsePath(next.path || '')
   const basePath = (current && current.path) || '/'
   const path = parsedPath.path
     ? resolvePath(parsedPath.path, basePath, append || next.append)
     : basePath
   // 获取query对象
+  // route.query对象的源头
   const query = resolveQuery(
-    parsedPath.query,
-    next.query,
-    router && router.options.parseQuery
+    parsedPath.query, // 需要被解析的url字符串
+    next.query, // 用户初始化的query对象
+    router && router.options.parseQuery // 用户自定义配置的解析函数，如果无配置，内部会使用默认的解析函数
   )
 
   let hash = next.hash || parsedPath.hash

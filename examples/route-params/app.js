@@ -11,6 +11,7 @@ const Logs = {
   template: `
     <div>
       <pre id="params">{{ to.params }}</pre>
+      <p>{{ $route.params }}</p>
       <router-link :to="to" class="child-link">{{ to.params.type }}</router-link>
       <router-view></router-view>
     </div>
@@ -35,7 +36,7 @@ const router = new VueRouter({
       children: [
         {
           path: ':type',
-          name: 'items.logs.type',
+          name: 'items.logs.type', // 子路由
           component: Log
         }
       ]
@@ -49,7 +50,7 @@ new Vue({
     <div id="app">
       <h1>Route params</h1>
       <ul>
-        <li><router-link to="/items/1/logs">item #1</router-link></li>
+        <li><router-link to="/items/1/你好">item #1</router-link></li>
         <li><router-link to="/items/2/logs">item #2</router-link></li>
       </ul>
       <router-view class="view"></router-view>

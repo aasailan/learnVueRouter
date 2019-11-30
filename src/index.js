@@ -127,15 +127,20 @@ export default class VueRouter {
     } else if (history instanceof HashHistory) {
       // 初始化后对当前url进行导航
       const setupHashListener = () => {
+        // 对hashchange事件进行监听
         history.setupListeners()
       }
+      // 开始首次导航
       history.transitionTo(
         history.getCurrentLocation(),
+        // NOTE: 因为hash模式下，首次导航可能会触发hashChange事件，而对hashChange事件的监听处理中又
+        // 存在着导航处理，所以这里需要等待首次导航结束后才对hashChange事件进行监听
+        // history模式不存在这个问题，因为调用pushState和replaceState都不会触发popState事件。
         setupHashListener, // onComplete
         setupHashListener // onAbort
       )
     }
-
+    // ??
     history.listen(route => {
       this.apps.forEach((app) => {
         app._route = route

@@ -22,8 +22,9 @@ export class HTML5History extends History {
     }
     // 获取对象初始化时的url，并保存
     const initLocation = getLocation(this.base)
-    // 监听popstate事件，当使用history.pushState和history.replaceState时并不会触发
+    // NOTE: 听popstate事件，当使用history.pushState和history.replaceState时并不会触发
     window.addEventListener('popstate', e => {
+      // NOTE: // 触发事件时，url地址已经改变，但是框架导航并未开始
       const current = this.current
 
       // Avoiding first `popstate` event dispatched in some browsers but first
@@ -75,6 +76,7 @@ export class HTML5History extends History {
   // 调用原生history对象方法，确认改变url地址栏
   ensureURL (push?: boolean) {
     if (getLocation(this.base) !== this.current.fullPath) {
+      // 使用route对象的fullPath进行url切换。fullPath的url是已经encode过后的
       const current = cleanPath(this.base + this.current.fullPath)
       push ? pushState(current) : replaceState(current)
     }

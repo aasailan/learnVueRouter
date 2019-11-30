@@ -33,8 +33,10 @@ export function createRoute (
     meta: (record && record.meta) || {},
     path: location.path || '/',
     hash: location.hash || '',
+    // NOTE: 注意，query和params对象的初始化，完全来源于location对象
     query,
     params: location.params || {},
+    // NOTE: 这里将query对象重新encode填充进url中
     fullPath: getFullPath(location, stringifyQuery), // 完成解析后的 URL，包含查询参数和 hash 的完整路径。
     matched: record ? formatMatch(record) : []
   }

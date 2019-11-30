@@ -45,5 +45,6 @@ export function pushState (url?: string, replace?: boolean) {
 }
 
 export function replaceState (url?: string) {
+  // 在内部调用history.repalce
   pushState(url, true)
 }

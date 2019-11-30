@@ -77,7 +77,9 @@ export class History {
     this.errorCbs.push(errorCb)
   }
   /**
-   * @description 框架导航的入口方法
+   * @description 框架导航的入口方法 NOTE: transitionTo只负责导航时框架内的事务处理（匹配组件，回调路由钩子等等）
+   * 改变地址栏url的任务可以通常由onComplete函数负责，如果onComplete函数中没有对url进行切换，那么transitionTo中会调用
+   * ensureURL方法对url的切换使用replace的方式做兜底操作。
    * @param {RawLocation} location toRoute 的url
    * @param {Function} onComplete 导航完成回调函数
    * @param {Function} onAbort 取消导航完成回调
@@ -87,7 +89,7 @@ export class History {
     onComplete?: Function,
     onAbort?: Function
   ) {
-    // 根据Location对象创建Route对象
+    // 根据Location对象创建Route对象（toRoute），此时this.current 相当于fromRoute
     const route = this.router.match(location, this.current)
     // 实际导航方法
     this.confirmTransition(
@@ -104,6 +106,7 @@ export class History {
         onComplete && onComplete(route)
         // 如果onComplete中没有根据toRoute改变url，
         // 则调用ensureURL确保会改变url地址栏，相当于兜底操作
+        // 使用replace的方式
         this.ensureURL()
 
         // fire ready cbs once
@@ -281,7 +284,7 @@ export class History {
   // 更新Route对象，调用afterEach钩子
   updateRoute (route: Route) {
     const prev = this.current
-    // 设置当前路由对象
+    // 导航确认，将toRoute对象设置当前路由对象
     this.current = route
     this.cb && this.cb(route)
     // 调用vuerouter.afterEach钩子
